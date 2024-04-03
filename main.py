@@ -1,43 +1,44 @@
 import json
 
-CLOSEKEY = "Weekly Time Series"
+CLOSEKEY = "4. close"
 
-data_raw = json.load(open("data.json","r"))
+data_raw = json.load(open("data.json","r"))["Weekly Time Series"]
 data = []
 for k in data_raw:
 	data.append(float(data_raw[k][CLOSEKEY]))
 
 
-starting_money = 10000
-money = starting_money
-shares = 0
+# best lower and upper bound is -3 and 2
+def calculatemoneymade(lowerbound,upperbound,starting_money=1):
+	money = starting_money
+	shares = 0
 
 
-samplesize = 8 # in weeks
-sample = []
-for week in range(len(data)):
-	if len(sample) < samplesize:
-		sample.append(data[week])
-		continue
-	avgslope = 0
-	for i in range(samplesize-1):
-		avgslope+= (sample[i+1]-sample[i])/(samplesize-1)
+	samplesize = 8 # in weeks
+	sample = []
+	for week in range(len(data)):
+		if len(sample) < samplesize:
+			sample.append(data[week])
+			continue
+		avgslope = 0
+		for i in range(samplesize-1):
+			avgslope+= (sample[i+1]-sample[i])/(samplesize-1)
+		
+		if avgslope < lowerbound:
+			shares += money/data[week]
+			money = 0
+		if avgslope > upperbound:
+			money += shares*data[week]
+			shares = 0
+
+		sample = sample[1:]+[data[week]]
+
+	money += shares*data[-1]
+	inc_per_year = (((money/starting_money)**(1/len(data)))**52)*100 - 100
 	
-	if avgslope < -2:
-		shares += money/data[week]
-		money = 0
-	if avgslope > 2:
-		money += shares*data[week]
-		shares = 0
+	return {
+		"money": money,
+		"inc per year":  inc_per_year
+	}
 
-	if abs(avgslope)>2:
-		print(money,shares)
-
-	sample = sample[1:]+[data[week]]
-
-money += shares*data[-1]
-shares = 0
-
-print("starting amount: ",starting_money)
-print("ending amount: ", money)
-print("% increase per year:",(((money/starting_money)**(1/len(data)))**52)*100 - 100)
+print(calculatemoneymade(-3,2))
